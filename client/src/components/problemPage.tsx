@@ -13,6 +13,33 @@ const languageExtensions = {
   cpp: cpp() 
 };
 
+const formatOutput = (output: string, outputType: OutputType) => {
+  try {
+    if (outputType.includes('[][]')) {
+      const baseType = outputType.replace('[][]', '') as VariableType;
+      const rows = output.split(';');
+      return rows.map(row => `[${row.split(',').map(v => formatSingleValue(v.trim(), baseType)).join(', ')}]`).join(', ');
+    } else if (outputType.includes('[]')) {
+      const baseType = outputType.replace('[]', '') as VariableType;
+      return `[${output.split(',').map(v => formatSingleValue(v.trim(), baseType)).join(', ')}]`;
+    }
+    return formatSingleValue(output, outputType as VariableType);
+  } catch {
+    return output;
+  }
+};
+
+const formatSingleValue = (value: string, type: VariableType): string => {
+  switch (type) {
+    case 'integer': return value;
+    case 'float': return value;
+    case 'string': return `"${value.replace(/^"(.+)"$/, '$1')}"`;
+    case 'boolean': return value.toLowerCase();
+    case 'object': return value;
+    default: return value;
+  }
+};
+
 const ProblemPage = () => {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
@@ -50,34 +77,6 @@ const ProblemPage = () => {
     const boilerplate = selectedProblem.boilerplates.find(b => b.language === newLang)?.code || '';
     setCode(boilerplate);
   };
-
-  const formatOutput = (output: string, outputType: OutputType) => {
-    try {
-      const parsedOutput = JSON.parse(output);
-  
-      const formatValue = (value: any, type: VariableType): any => {
-        if (type === 'string') return `"${value}"`; // Wrap strings in quotes
-        if (type === 'boolean') return value ? 'true' : 'false'; // Boolean formatting
-        return value; // Return numbers, objects, etc. as-is
-      };
-  
-      const formatArray = (arr: any[], type: VariableType): string => {
-        return `[${arr.map((item) =>
-          Array.isArray(item) ? formatArray(item, type) : formatValue(item, type)
-        ).join(', ')}]`;
-      };
-  
-      // Extract base type from outputType (e.g., 'integer[][]' → 'integer')
-      const baseType = outputType.replace(/\[\]*/g, '') as VariableType;
-      const isArray = outputType.includes('[]');
-  
-      if (isArray) return formatArray(parsedOutput, baseType);
-      return formatValue(parsedOutput, baseType);
-    } catch {
-      return output; // Return raw output if parsing fails
-    }
-  };
-  
 
   const handleSubmit = async () => {
     if (!selectedProblem) return;

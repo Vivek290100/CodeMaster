@@ -1,3 +1,4 @@
+//Execute\client\src\types\problemTypes.ts
 export type VariableType = 'integer' | 'float' | 'string' | 'boolean' | 'object';
 export type OutputType = VariableType | `${VariableType}[]` | `${VariableType}[][]`;
 

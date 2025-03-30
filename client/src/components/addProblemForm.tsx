@@ -10,6 +10,56 @@ const OUTPUT_TYPES: OutputType[] = [
   'integer[][]', 'float[][]', 'string[][]', 'boolean[][]', 'object[][]'
 ];
 
+const getPlaceholderForType = (type: VariableType, isArray: boolean): string => {
+  if (isArray) {
+    switch (type) {
+      case 'integer': return 'e.g., 1, 2, 3';
+      case 'float': return 'e.g., 1.0, 2.5, 3.14';
+      case 'string': return 'e.g., "apple", "banana", "cherry"';
+      case 'boolean': return 'e.g., true, false, true';
+      case 'object': return 'e.g., {"key": "value"}, {"id": 1}';
+    }
+  } else {
+    switch (type) {
+      case 'integer': return 'e.g., 42';
+      case 'float': return 'e.g., 3.14';
+      case 'string': return 'e.g., "hello"';
+      case 'boolean': return 'e.g., true';
+      case 'object': return 'e.g., {"key": "value"}';
+    }
+  }
+  return '';
+};
+
+const getOutputPlaceholder = (outputType: OutputType): string => {
+  if (outputType.includes('[][]')) {
+    switch (outputType.replace('[][]', '')) {
+      case 'integer': return 'e.g., 1,2;3,4';
+      case 'float': return 'e.g., 1.0,2.5;3.14,4.0';
+      case 'string': return 'e.g., "a","b";"c","d"';
+      case 'boolean': return 'e.g., true,false;false,true';
+      case 'object': return 'e.g., {"k":"v"},{"k":"v"};{"id":1},{"id":2}';
+    }
+  } else if (outputType.includes('[]')) {
+    switch (outputType.replace('[]', '')) {
+      case 'integer': return 'e.g., 1, 2, 3';
+      case 'float': return 'e.g., 1.0, 2.5, 3.14';
+      case 'string': return 'e.g., "apple", "banana", "cherry"';
+      case 'boolean': return 'e.g., true, false, true';
+      case 'object': return 'e.g., {"key": "value"}, {"id": 1}';
+    }
+  } else {
+    switch (outputType) {
+      case 'integer': return 'e.g., 42';
+      case 'float': return 'e.g., 3.14';
+      case 'string': return 'e.g., "hello"';
+      case 'boolean': return 'e.g., true';
+      case 'object': return 'e.g., {"key": "value"}';
+    }
+  }
+  return '';
+};
+
 const AddProblemForm = () => {
   const [formData, setFormData] = useState<Partial<Problem>>({
     title: '',
@@ -77,18 +127,6 @@ const AddProblemForm = () => {
     return null;
   };
 
-  const formatArrayInput = (value: string, type: VariableType, isArray: boolean) => {
-    if (!isArray) return value;
-    return value.split(',').map(v => {
-      switch (type) {
-        case 'integer': return parseInt(v.trim()) || 0;
-        case 'float': return parseFloat(v.trim()) || 0.0;
-        case 'boolean': return v.trim().toLowerCase() === 'true';
-        default: return v.trim();
-      }
-    }).join(',');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const validationError = validateForm();
@@ -102,14 +140,9 @@ const AddProblemForm = () => {
       const formattedTestCases = formData.testCases!.map(tc => ({
         ...tc,
         inputs: Object.fromEntries(
-          Object.entries(tc.inputs).map(([key, value]) => {
-            const variable = formData.inputVariables!.find(v => v.name === key)!;
-            return [key, formatArrayInput(value, variable.type, variable.isArray)];
-          })
+          Object.entries(tc.inputs).map(([key, value]) => [key, value])
         ),
-        expectedOutput: formData.outputType?.includes('[]') 
-          ? tc.expectedOutput // Already comma-separated in the form
-          : tc.expectedOutput
+        expectedOutput: tc.expectedOutput
       }));
   
       const boilerplates = formData.supportedLanguages!.map((lang) => ({
@@ -117,12 +150,6 @@ const AddProblemForm = () => {
         version: LANGUAGE_VERSIONS[lang as keyof typeof LANGUAGE_VERSIONS],
         code: '',
       }));
-  
-      console.log('Submitting:', { 
-        ...formData,
-        testCases: formattedTestCases,
-        boilerplates 
-      }); // Debug log
   
       await axios.post('http://localhost:5000/api/problems', { 
         ...formData,
@@ -147,7 +174,6 @@ const AddProblemForm = () => {
     } catch (error) {
       const axiosError = error as AxiosError<{ message?: string }>;
       setError('Failed to create problem: ' + (axiosError.response?.data?.message || axiosError.message));
-      console.error('Submission error:', axiosError.response?.data || axiosError);
     } finally {
       setIsSubmitting(false);
     }
@@ -215,7 +241,7 @@ const AddProblemForm = () => {
             <label className="block text-sm font-medium mb-1">Output Type</label>
             <select
               value={formData.outputType}
-              onChange={(e) => updateFormData('outputType', e.target.value)}
+              onChange={(e) => updateFormData('outputType', e.target.value as OutputType)}
               className="w-full p-3 rounded-lg border border-input bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
             >
               {OUTPUT_TYPES.map(type => (
@@ -341,7 +367,7 @@ const AddProblemForm = () => {
                           newTCs[i].inputs[v.name] = e.target.value;
                           updateFormData('testCases', newTCs);
                         }}
-                        placeholder={v.isArray ? "e.g., 1, 2, 3" : `Enter ${v.type}`}
+                        placeholder={getPlaceholderForType(v.type, v.isArray)}
                         className="w-full p-3 rounded-lg border border-input bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
                       />
                     </div>
@@ -349,7 +375,11 @@ const AddProblemForm = () => {
                   <div>
                     <label className="block text-sm mb-1">
                       Expected Output
-                      {formData.outputType?.includes('[]') && <span className="text-xs ml-1">(comma-separated)</span>}
+                      {formData.outputType?.includes('[]') && (
+                        <span className="text-xs ml-1">
+                          {formData.outputType.includes('[][]') ? '(semicolon-separated rows, comma-separated values)' : '(comma-separated)'}
+                        </span>
+                      )}
                     </label>
                     <input
                       value={tc.expectedOutput}
@@ -358,7 +388,7 @@ const AddProblemForm = () => {
                         newTCs[i].expectedOutput = e.target.value;
                         updateFormData('testCases', newTCs);
                       }}
-                      placeholder={formData.outputType?.includes('[]') ? "e.g., 1, 2, 3" : `Enter ${formData.outputType}`}
+                      placeholder={getOutputPlaceholder(formData.outputType!)}
                       className="w-full p-3 rounded-lg border border-input bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
                       required
                     />

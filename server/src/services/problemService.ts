@@ -1,4 +1,3 @@
-// server/src/services/problemService.ts
 import axios from 'axios';
 import { IBaseRepository } from '../types/repositoryTypes';
 import { IProblemDocument, IInputVariable, ExecutionResult, ITestCase, OutputType, VariableType } from '../types/problemTypes';
@@ -53,52 +52,57 @@ export class ProblemService {
     return this.problemRepository.findAll();
   }
 
-  async executeCode(
-    problemId: string,
-    language: string,
-    version: string,
-    code: string
-  ): Promise<{ results: ExecutionResult[]; allPassed: boolean }> {
-    const problem = await this.getProblem(problemId);
-    if (!problem) throw new Error('Problem not found');
-
-    const results: ExecutionResult[] = [];
-    let allPassed = true;
-
-    for (const [index, testCase] of problem.testCases.entries()) {
-      const startTime = Date.now();
-      const result = await this.executeTestCase(
-        problem,
-        language,
-        version,
-        code,
-        testCase
-      );
-      const executionTime = Date.now() - startTime;
-
-      const expected = problem.outputType.includes('[]') 
-        ? testCase.expectedOutput.split(',').map(v => v.trim()).join(',')
-        : testCase.expectedOutput;
-      const actual = problem.outputType.includes('[]') 
-        ? result.actualOutput.split(',').map(v => v.trim()).join(',')
-        : result.actualOutput;
-
-      const passed = actual === expected && !result.stderr;
-
-      results.push({
-        ...result,
-        executionTime,
-        passed,
-      });
-
-      if (!passed) allPassed = false;
-
-      if (index < problem.testCases.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, this.RATE_LIMIT_DELAY));
-      }
+  private parseInputValue(value: string, type: VariableType, isArray: boolean): any {
+    if (isArray) {
+      return value.split(',').map(v => this.parseSingleValue(v.trim(), type));
     }
+    return this.parseSingleValue(value, type);
+  }
 
-    return { results, allPassed };
+  private parseSingleValue(value: string, type: VariableType): any {
+    switch (type) {
+      case 'integer': return parseInt(value) || 0;
+      case 'float': return parseFloat(value) || 0.0;
+      case 'boolean': return value.toLowerCase() === 'true';
+      case 'string': return value.replace(/^"(.+)"$/, '$1');
+      case 'object': return JSON.parse(value);
+      default: return value;
+    }
+  }
+
+  private formatOutputValue(value: any, type: OutputType): string {
+    if (type.includes('[][]')) {
+      const baseType = type.replace('[][]', '') as VariableType;
+      return (value as any[][]).map(row => 
+        row.map(item => this.formatSingleValue(item, baseType)).join(',')
+      ).join(';');
+    } else if (type.includes('[]')) {
+      const baseType = type.replace('[]', '') as VariableType;
+      return (value as any[]).map(item => this.formatSingleValue(item, baseType)).join(',');
+    }
+    return this.formatSingleValue(value, type as VariableType);
+  }
+
+  private formatSingleValue(value: any, type: VariableType): string {
+    switch (type) {
+      case 'integer': return String(value);
+      case 'float': return String(value);
+      case 'string': return `"${value}"`;
+      case 'boolean': return String(value).toLowerCase();
+      case 'object': return JSON.stringify(value);
+      default: return String(value);
+    }
+  }
+
+  private parseOutput(output: string, outputType: OutputType): any {
+    if (outputType.includes('[][]')) {
+      const baseType = outputType.replace('[][]', '') as VariableType;
+      return output.split(';').map(row => row.split(',').map(v => this.parseSingleValue(v.trim(), baseType)));
+    } else if (outputType.includes('[]')) {
+      const baseType = outputType.replace('[]', '') as VariableType;
+      return output.split(',').map(v => this.parseSingleValue(v.trim(), baseType));
+    }
+    return this.parseSingleValue(output, outputType as VariableType);
   }
 
   private async executeTestCase(
@@ -110,9 +114,11 @@ export class ProblemService {
   ): Promise<Omit<ExecutionResult, 'passed' | 'executionTime'>> {
     const inputsMap = new Map(Object.entries(testCase.inputs || {}));
     const inputValues = problem.inputVariables.map((variable) =>
-      inputsMap.get(variable.name) || ''
+      this.parseInputValue(inputsMap.get(variable.name) || '', variable.type, variable.isArray)
     );
-    const stdin = inputValues.join('\n');
+    const stdin = inputValues.map(v => 
+      Array.isArray(v) ? v.join(',') : String(v)
+    ).join('\n');
 
     try {
       const response = await axios.post<PistonResponse>(
@@ -140,10 +146,14 @@ export class ProblemService {
         };
       }
 
+      const actualOutputRaw = run.stdout.trim();
+      const actualOutput = this.parseOutput(actualOutputRaw, problem.outputType);
+      const formattedActual = this.formatOutputValue(actualOutput, problem.outputType);
+
       return {
         input: JSON.stringify(testCase),
         expectedOutput: testCase.expectedOutput,
-        actualOutput: run.stdout.trim(),
+        actualOutput: formattedActual,
         stderr: run.stderr || (run.code !== 0 ? `Exit code ${run.code}` : ''),
         isSample: testCase.isSample,
       };
@@ -161,35 +171,47 @@ export class ProblemService {
     }
   }
 
-  private validateOutputType(output: string, expectedType: OutputType): string | null {
-    if (!output) return 'No output produced';
-    
-    try {
-      if (expectedType.includes('[]')) {
-        const values = output.split(',').map(v => v.trim());
-        const baseType = expectedType.replace('[]', '') as VariableType;
-        for (const value of values) {
-          switch (baseType) {
-            case 'integer': if (!/^-?\d+$/.test(value)) return `Expected integer, got ${value}`; break;
-            case 'float': if (!/^-?\d*\.?\d+$/.test(value)) return `Expected float, got ${value}`; break;
-            case 'boolean': if (!/^(true|false)$/.test(value.toLowerCase())) return `Expected boolean, got ${value}`; break;
-            case 'string': break;
-            case 'object': return 'Object arrays not supported in this format';
-          }
-        }
-      } else {
-        switch (expectedType) {
-          case 'integer': if (!/^-?\d+$/.test(output)) return `Expected integer, got ${output}`; break;
-          case 'float': if (!/^-?\d*\.?\d+$/.test(output)) return `Expected float, got ${output}`; break;
-          case 'boolean': if (!/^(true|false)$/.test(output.toLowerCase())) return `Expected boolean, got ${output}`; break;
-          case 'string': break;
-          case 'object': return 'Objects not supported in this format';
-        }
+  async executeCode(
+    problemId: string,
+    language: string,
+    version: string,
+    code: string
+  ): Promise<{ results: ExecutionResult[]; allPassed: boolean }> {
+    const problem = await this.getProblem(problemId);
+    if (!problem) throw new Error('Problem not found');
+
+    const results: ExecutionResult[] = [];
+    let allPassed = true;
+
+    for (const [index, testCase] of problem.testCases.entries()) {
+      const startTime = Date.now();
+      const result = await this.executeTestCase(
+        problem,
+        language,
+        version,
+        code,
+        testCase
+      );
+      const executionTime = Date.now() - startTime;
+
+      const expectedParsed = this.parseOutput(testCase.expectedOutput, problem.outputType);
+      const actualParsed = this.parseOutput(result.actualOutput, problem.outputType);
+      const passed = JSON.stringify(expectedParsed) === JSON.stringify(actualParsed) && !result.stderr;
+
+      results.push({
+        ...result,
+        executionTime,
+        passed,
+      });
+
+      if (!passed) allPassed = false;
+
+      if (index < problem.testCases.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, this.RATE_LIMIT_DELAY));
       }
-      return null;
-    } catch (e) {
-      return `Invalid output format: ${(e as Error).message}`;
     }
+
+    return { results, allPassed };
   }
 
   private generateBoilerplate(

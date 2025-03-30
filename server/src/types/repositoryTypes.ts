@@ -1,3 +1,4 @@
+// Execute\server\src\types\repositoryTypes.ts
 import { Document } from 'mongoose';
 
 export interface IBaseRepository<T extends Document> {

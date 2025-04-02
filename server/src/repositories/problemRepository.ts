@@ -1,19 +1,17 @@
-// Execute\server\src\repositories\problemRepository.ts
-import { IBaseRepository } from '../types/repositoryTypes';
-import { IProblemDocument } from '../types/problemTypes';
-import { Problem } from '../models/problemModel';
+import { IProblem, Problem } from '../models/problem';
+import { IProblemRepository } from './IProblemRepository';
 
-export class ProblemRepository implements IBaseRepository<IProblemDocument> {
-  async create(data: Partial<IProblemDocument>): Promise<IProblemDocument> {
-    const problem = new Problem(data);
-    return problem.save();
+export class ProblemRepository implements IProblemRepository {
+  async findAll(): Promise<IProblem[]> {
+    return Problem.find({}, 'title slug difficulty');
   }
 
-  async findById(id: string): Promise<IProblemDocument | null> {
-    return Problem.findById(id).exec();
+  async findBySlug(slug: string): Promise<IProblem | null> {
+    return Problem.findOne({ slug });
   }
 
-  async findAll(): Promise<IProblemDocument[]> {
-    return Problem.find().exec();
+  async create(problem: IProblem): Promise<IProblem> {
+    const newProblem = new Problem(problem);
+    return newProblem.save();
   }
 }

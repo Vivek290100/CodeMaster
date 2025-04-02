@@ -1,118 +1,41 @@
-//Execute\server\src\controllers\problemController.ts
+// Execute\server\src\controllers\problemController.ts
 import { Request, Response } from 'express';
-import { ProblemService } from '../services/problemService';
-import { ExecutionResult } from '../types/problemTypes';
+import { IProblemService } from '../services/IProblemService';
 
 export class ProblemController {
-  constructor(private problemService: ProblemService) {}
+  constructor(private problemService: IProblemService) {}
 
-  async addProblem(req: Request, res: Response): Promise<void> {
-    try {
-      // Validate input variables
-      if (!req.body.inputVariables || !Array.isArray(req.body.inputVariables)) {
-        res.status(400).json({ message: 'Input variables must be an array' });
-        return;
-      }
-
-      // Validate test cases
-      if (!req.body.testCases || !Array.isArray(req.body.testCases)) {
-        res.status(400).json({ message: 'Test cases must be an array' });
-        return;
-      }
-
-      const problem = await this.problemService.addProblem(req.body);
-      res.status(201).json({ message: 'Problem added successfully', problem });
-    } catch (error) {
-      res.status(500).json({ 
-        message: 'Error adding problem', 
-        error: (error as Error).message 
-      });
-    }
+  async getProblems(req: Request, res: Response) {
+    const problems = await this.problemService.getProblems();
+    res.json(problems);
   }
 
-  async getProblem(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      res.status(400).json({ message: 'Invalid problem ID format' });
-      return;
-    }
+  async getProblem(req: Request, res: Response) {
     try {
-      const problem = await this.problemService.getProblem(id);
-      if (!problem) {
-        res.status(404).json({ message: 'Problem not found' });
-        return;
-      }
+      
+      const problem = await this.problemService.getProblem(req.params.slug);
       res.json(problem);
     } catch (error) {
-      res.status(500).json({ 
-        message: 'Error fetching problem', 
-        error: (error as Error).message 
-      });
+      const err = error as Error;
+      res.status(404).json({ message: err.message });
     }
   }
 
-  async getAllProblems(req: Request, res: Response): Promise<void> {
-    try {
-      const problems = await this.problemService.getAllProblems();
-      res.json(problems);
-    } catch (error) {
-      res.status(500).json({ 
-        message: 'Error fetching problems', 
-        error: (error as Error).message 
-      });
-    }
+  async addProblem(req: Request, res: Response) {
+    const problem = await this.problemService.addProblem(req.body);
+    res.status(201).json(problem);
   }
 
-  async executeCode(req: Request, res: Response): Promise<void> {
-    const { problemId, language, version, code } = req.body;
-    
-    // Validate required fields
-    if (!problemId || !language || !version || !code) {
-      res.status(400).json({ message: 'Missing required fields' });
-      return;
-    }
-
+  async runCode(req: Request, res: Response) {
     try {
-      const result = await this.problemService.executeCode(
-        problemId, 
-        language, 
-        version, 
-        code
-      );
+      console.log("wwwwwww",req.body,req.params.slug);
       
-      // Format results for better error display
-      const formattedResults = result.results.map(r => ({
-        ...r,
-        errorType: r.stderr ? this.determineErrorType(r.stderr) : undefined
-      }));
-
-      res.json({ 
-        ...result, 
-        results: formattedResults 
-      });
+      const { code, language } = req.body;
+      const results = await this.problemService.runCode(req.params.slug, code, language);
+      res.json(results);
     } catch (error) {
-      const errorMessage = (error as Error).message;
-      res.status(errorMessage.includes('Rate limit') ? 429 : 500).json({
-        message: errorMessage.includes('Rate limit') ? 
-          errorMessage : 'Execution failed',
-        error: errorMessage,
-      });
+      const err = error as Error;
+      res.status(400).json({ message: err.message });
     }
-  }
-
-  private determineErrorType(stderr: string): ExecutionResult['errorType'] {
-    if (stderr.includes('SyntaxError') || stderr.includes('compile error')) {
-      return 'syntax';
-    }
-    if (stderr.includes('Timeout') || stderr.includes('timeout')) {
-      return 'timeout';
-    }
-    if (stderr.includes('MemoryError') || stderr.includes('memory')) {
-      return 'memory';
-    }
-    if (stderr.includes('TypeError') || stderr.includes('type')) {
-      return 'type';
-    }
-    return 'runtime';
   }
 }

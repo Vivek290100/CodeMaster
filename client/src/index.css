@@ -1,39 +1,41 @@
+/* src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 222.2 47.4% 11.2%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 47.4% 11.2%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 0 0% 100%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.75rem;
+    --background: 0 0% 98%; /* Light background */
+    --foreground: 222.2 47.4% 11.2%; /* Dark text */
+    --card: 0 0% 100%; /* White card */
+    --card-foreground: 222.2 47.4% 11.2%; /* Dark text */
+    --primary: 221.2 83.2% 53.3%; /* Blue primary */
+    --primary-foreground: 0 0% 100%; /* White text */
+    --muted: 210 40% 96.1%; /* Light muted */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Gray text */
+    --destructive: 0 84.2% 60.2%; /* Red destructive */
+    --destructive-foreground: 0 0% 100%; /* White text */
+    --border: 214.3 31.8% 91.4%; /* Light border */
+    --input: 214.3 31.8% 91.4%; /* Light input border */
+    --ring: 221.2 83.2% 53.3%; /* Blue ring */
+    --radius: 0.75rem; /* Rounded corners */
+    
   }
 
   .dark {
-    --background: 222.2 47.4% 11.2%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 47.4% 15%;
-    --card-foreground: 210 40% 98%;
-    --primary: 221.2 83.2% 60%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --muted: 217.2 32.6% 20%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --destructive: 0 62.8% 50%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 25%;
-    --input: 217.2 32.6% 25%;
-    --ring: 224.3 76.3% 48%;
+    --background: 222.2 47.4% 11.2%; /* Dark background */
+    --foreground: 210 40% 98%; /* Light text */
+    --card: 222.2 47.4% 15%; /* Darker card */
+    --card-foreground: 210 40% 98%; /* Light text */
+    --primary: 221.2 83.2% 60%; /* Slightly lighter blue */
+    --primary-foreground: 222.2 47.4% 11.2%; /* Dark text */
+    --muted: 217.2 32.6% 20%; /* Dark muted */
+    --muted-foreground: 215 20.2% 65.1%; /* Light gray text */
+    --destructive: 0 62.8% 50%; /* Darker red */
+    --destructive-foreground: 210 40% 98%; /* Light text */
+    --border: 217.2 32.6% 25%; /* Dark border */
+    --input: 217.2 32.6% 25%; /* Dark input border */
+    --ring: 224.3 76.3% 48%; /* Adjusted blue ring */
   }
 }
 
@@ -44,5 +46,74 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
+  }
+
+  /* Ensure HSL colors are applied using CSS variables */
+  html {
+    color-scheme: light;
+  }
+
+  .dark html {
+    color-scheme: dark;
+  }
+
+  [class^="bg-"], [class*=" bg-"] {
+    background-color: hsl(var(--background));
+  }
+
+  [class^="text-"], [class*=" text-"] {
+    color: hsl(var(--foreground));
+  }
+
+  .bg-background {
+    background-color: hsl(var(--background));
+  }
+
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
+  }
+
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+
+  .bg-muted {
+    background-color: hsl(var(--muted));
+  }
+
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .bg-destructive {
+    background-color: hsl(var(--destructive));
+  }
+
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground));
+  }
+
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+
+  .border-input {
+    border-color: hsl(var(--input));
+  }
+
+  .ring-primary {
+    --tw-ring-color: hsl(var(--ring));
   }
 }

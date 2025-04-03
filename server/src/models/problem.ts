@@ -6,10 +6,23 @@ export interface IProblem {
   difficulty: 'Easy' | 'Medium' | 'Hard';
   description: string;
   variables: {
-    inputs: { name: string; type: string; subtype?: string; description?: string }[];
-    output: { name: string; type: string; subtype?: string; description?: string };
+    inputs: { 
+      name: string; 
+      type: 'integer' | 'string' | 'array'; 
+      subtype?: 'integer' | 'string'; 
+      description?: string 
+    }[];
+    output: { 
+      name: string; 
+      type: 'integer' | 'string' | 'array' | 'boolean'; // Added 'boolean'
+      subtype?: 'integer' | 'string'; 
+      description?: string 
+    };
   };
-  testcases: { input: Record<string, any>; output: any }[];
+  testcases: { 
+    input: Record<string, string | number | (string | number)[]>; 
+    output: string | number | boolean | (string | number)[] // Added 'boolean'
+  }[];
   boilerplates: Record<string, string>;
 }
 
@@ -21,20 +34,20 @@ const ProblemSchema = new Schema<IProblem>({
   variables: {
     inputs: [{
       name: { type: String, required: true },
-      type: { type: String, required: true },
-      subtype: String,
+      type: { type: String, required: true }, // "integer", "string", "array"
+      subtype: String, // Optional: "integer" or "string" for arrays
       description: String
     }],
     output: {
       name: { type: String, default: 'result' },
-      type: { type: String, required: true },
+      type: { type: String, required: true }, // "integer", "string", "array", "boolean"
       subtype: String,
       description: String
     }
   },
   testcases: [{
     input: { type: Map, of: Schema.Types.Mixed, required: true },
-    output: { type: Schema.Types.Mixed, required: true }
+    output: { type: Schema.Types.Mixed, required: true } // Can store boolean, number, string, or array
   }],
   boilerplates: { type: Map, of: String, default: {} }
 });

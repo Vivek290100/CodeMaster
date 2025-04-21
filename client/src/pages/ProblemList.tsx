@@ -26,7 +26,7 @@ const ProblemList: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Coding Problems</h1>
-          <p className="text-muted-foreground mt-2">Sharpen your coding skills with these challenges</p>
+          <p className="text-muted-foreground mt-2">Sharpen your coding skills with these challenges...</p>
         </header>
 
         <div className="flex justify-between items-center mb-6">

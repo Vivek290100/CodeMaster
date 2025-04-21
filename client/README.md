@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Judgexpert',
-        short_name: 'Judgexpert',
+        name: 'Execute',
+        short_name: 'Execute',
         description: 'Your competitive coding companion',
         theme_color: '#0f172a',
         background_color: '#ffffff',
